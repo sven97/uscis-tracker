@@ -1,10 +1,20 @@
 """Pydantic request/response models for the JSON API."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from app.models import Case
+
+
+def _utc_iso(dt: datetime | None) -> str | None:
+    """Serialize a (naive) UTC datetime as an explicit-UTC ISO string so browsers
+    localize it correctly instead of misreading it as local time."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
 
 
 class CaseCreate(BaseModel):
@@ -32,6 +42,10 @@ class CaseRead(BaseModel):
     notify: bool
     created_at: datetime
 
+    @field_serializer("last_checked", "created_at")
+    def _ser_dt(self, dt: datetime | None) -> str | None:
+        return _utc_iso(dt)
+
     @classmethod
     def from_model(cls, c: Case) -> "CaseRead":
         return cls(
@@ -57,6 +71,10 @@ class CaseEventRead(BaseModel):
     action_code_desc: str | None
     recorded_at: datetime
     source: str
+
+    @field_serializer("recorded_at")
+    def _ser_dt(self, dt: datetime) -> str | None:
+        return _utc_iso(dt)
 
 
 class SettingsRead(BaseModel):
