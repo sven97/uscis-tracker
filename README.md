@@ -21,15 +21,15 @@ Requires Docker + Docker Compose.
 
 ```bash
 mkdir uscis-tracker && cd uscis-tracker
-curl -O https://raw.githubusercontent.com/OWNER/uscis-tracker/main/docker-compose.yml
-curl -o .env https://raw.githubusercontent.com/OWNER/uscis-tracker/main/.env.example
+curl -O https://raw.githubusercontent.com/Sven97/uscis-tracker/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/Sven97/uscis-tracker/main/.env.example
 docker compose up -d
 ```
 
 Open **http://localhost:8000**, add a receipt number, and (optionally) set a
 notification channel in **Settings**. That's it.
 
-> Replace `OWNER` with the repo owner. The compose file pulls a prebuilt multi-arch
+> The image is `ghcr.io/sven97/uscis-tracker`. The compose file pulls a prebuilt multi-arch
 > image (amd64 + arm64) — nothing to build on your device. To build from source
 > instead, clone the repo and run `docker compose up -d --build`.
 

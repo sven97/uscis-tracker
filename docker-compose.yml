@@ -1,11 +1,11 @@
 # USCIS Tracker — self-hosted. One command:  docker compose up -d
 #
 # To run the prebuilt image instead of building locally, replace `build: .` below
-# with:  image: ghcr.io/OWNER/uscis-tracker:latest
+# with:  image: ghcr.io/sven97/uscis-tracker:latest
 services:
   app:
     build: .
-    # image: ghcr.io/OWNER/uscis-tracker:latest
+    # image: ghcr.io/sven97/uscis-tracker:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
