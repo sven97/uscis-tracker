@@ -62,7 +62,7 @@ export function CaseDetailPage() {
   };
 
   const onDelete = async () => {
-    if (!confirm("Close and stop tracking this file?")) return;
+    if (!confirm("Stop tracking this case?")) return;
     try {
       await casesApi.deleteCase(caseId);
       navigate("/");
@@ -72,11 +72,11 @@ export function CaseDetailPage() {
   };
 
   if (error && !c) return <div className="error-box">{error}</div>;
-  if (!c) return <div className="empty">Retrieving file…</div>;
+  if (!c) return <div className="empty">Loading…</div>;
 
   return (
     <div className="fade-in">
-      <Link to="/" className="backlink">← Registry</Link>
+      <Link to="/" className="backlink">← All cases</Link>
 
       <div className="detail-head">
         <h1>{c.nickname || c.receipt_number}</h1>
@@ -103,7 +103,7 @@ export function CaseDetailPage() {
       </div>
 
       <div className="panel">
-        <div className="panel-title">File settings</div>
+        <div className="panel-title">Settings</div>
         <div className="row" style={{ marginBottom: "1.1rem" }}>
           <div className="field" style={{ flex: 1, minWidth: 200 }}>
             <label>Nickname</label>
@@ -149,7 +149,7 @@ export function CaseDetailPage() {
         )}
       </div>
 
-      <button className="btn btn-danger" onClick={onDelete}>Close file & stop tracking</button>
+      <button className="btn btn-danger" onClick={onDelete}>Stop tracking</button>
     </div>
   );
 }

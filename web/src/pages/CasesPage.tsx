@@ -90,20 +90,10 @@ export function CasesPage() {
   const shown = cases.filter((c) =>
     filter === "all" ? true : filter === "finished" ? c.is_finished : !c.is_finished,
   );
-  const activeCount = cases.filter((c) => !c.is_finished).length;
-  const doneCount = cases.length - activeCount;
 
   return (
     <>
-      <div className="page-head">
-        <div className="eyebrow">Tracking Registry</div>
-        <h1>Your case files</h1>
-        <div className="tally">
-          {String(activeCount).padStart(2, "0")} active &nbsp;·&nbsp;{" "}
-          {String(doneCount).padStart(2, "0")} complete
-        </div>
-      </div>
-
+      <h2 className="section-head">Track a new case</h2>
       <form className="panel" onSubmit={onAdd}>
         <div className="add-card">
           <div className="field">
@@ -118,12 +108,14 @@ export function CasesPage() {
               onChange={(e) => setNickname(e.target.value)} />
           </div>
           <button type="submit" className="btn btn-primary" disabled={adding}>
-            {adding ? "Filing…" : "Open a file"}
+            {adding ? "Adding…" : "Start tracking"}
           </button>
         </div>
       </form>
 
       {error && <div className="error-box">{error}</div>}
+
+      <h2 className="section-head spaced">Your cases</h2>
 
       <div className="tabs">
         {(["all", "active", "finished"] as Filter[]).map((f) => (
@@ -134,9 +126,9 @@ export function CasesPage() {
       </div>
 
       {loading ? (
-        <div className="empty">Opening the registry…</div>
+        <div className="empty">Loading…</div>
       ) : shown.length === 0 ? (
-        <div className="empty">No files here yet. Open one above to begin tracking.</div>
+        <div className="empty">No cases yet. Add a receipt number above to start tracking.</div>
       ) : (
         shown.map((c, i) => (
           <article

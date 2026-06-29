@@ -96,13 +96,21 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 480; letter-spacing:
   content: ""; position: absolute; inset: 3px; border: 1px solid var(--green);
   border-radius: 50%; opacity: 0.35;
 }
-.brand-text .title { font-family: var(--font-display); font-size: 1.32rem; font-weight: 500; line-height: 1; color: var(--ink); }
+.brand-text { display: flex; flex-direction: column; justify-content: center; }
+.brand-text .title { font-family: var(--font-display); font-size: 1.34rem; font-weight: 520; line-height: 1.05; color: var(--ink); letter-spacing: -0.01em; }
 .brand-text .sub {
   font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.22em;
   text-transform: uppercase; color: var(--muted); margin-top: 0.34rem;
 }
 .brand a { color: inherit; }
 .brand a:hover { text-decoration: none; }
+
+/* Section headings */
+.section-head {
+  font-family: var(--font-display); font-size: 1.55rem; font-weight: 480;
+  letter-spacing: -0.015em; color: var(--ink); margin: 0 0 1rem;
+}
+.section-head.spaced { margin-top: 2.4rem; }
 
 .nav-link {
   font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em;
