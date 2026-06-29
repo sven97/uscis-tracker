@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env / data
+.env
+data/
+*.sqlite
+*.db
+
+# Node / web build
+web/node_modules/
+web/dist/
+
+# Tooling
+.playwright-mcp/
+.DS_Store
