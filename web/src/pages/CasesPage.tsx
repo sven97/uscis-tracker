@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import * as casesApi from "../api/cases";
+import { pollUntilChecked } from "../api/poll";
 import { ApiError, type Case } from "../api/types";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -15,6 +16,16 @@ export function CasesPage() {
   const [receipt, setReceipt] = useState("");
   const [nickname, setNickname] = useState("");
   const [adding, setAdding] = useState(false);
+  const [checking, setChecking] = useState<Set<number>>(new Set());
+
+  const setChecker = (id: number, on: boolean) =>
+    setChecking((s) => {
+      const n = new Set(s);
+      on ? n.add(id) : n.delete(id);
+      return n;
+    });
+
+  const replaceCase = (c: Case) => setCases((cs) => cs.map((x) => (x.id === c.id ? c : x)));
 
   const load = async () => {
     setLoading(true);
@@ -36,10 +47,18 @@ export function CasesPage() {
     e.preventDefault();
     setAdding(true);
     try {
-      await casesApi.createCase({ receipt_number: receipt.trim(), nickname: nickname.trim() || null });
+      const created = await casesApi.createCase({
+        receipt_number: receipt.trim(),
+        nickname: nickname.trim() || null,
+      });
       setReceipt("");
       setNickname("");
       await load();
+      // The first status arrives in the background — poll for it.
+      setChecker(created.id, true);
+      pollUntilChecked(created.id, created.last_checked, replaceCase).finally(() =>
+        setChecker(created.id, false),
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to add case");
     } finally {
@@ -48,11 +67,15 @@ export function CasesPage() {
   };
 
   const onRefresh = async (id: number) => {
+    const since = cases.find((c) => c.id === id)?.last_checked ?? null;
+    setChecker(id, true);
     try {
-      const updated = await casesApi.refreshCase(id);
-      setCases((cs) => cs.map((c) => (c.id === id ? updated : c)));
+      await casesApi.refreshCase(id); // returns immediately; fetch runs in background
+      await pollUntilChecked(id, since, replaceCase);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Refresh failed");
+    } finally {
+      setChecker(id, false);
     }
   };
 
@@ -108,10 +131,14 @@ export function CasesPage() {
                 <div className="case-status">
                   <StatusBadge c={c} />{" "}
                   {c.is_finished && <span className="badge dark">Done</span>}{" "}
-                  {!c.notify && <span className="badge">🔕 muted</span>}
+                  {!c.notify && <span className="badge">🔕 muted</span>}{" "}
+                  {checking.has(c.id) && <span className="badge blue">Checking…</span>}
                 </div>
               </div>
-              <button className="secondary small" onClick={() => onRefresh(c.id)}>Refresh</button>
+              <button className="secondary small" disabled={checking.has(c.id)}
+                onClick={() => onRefresh(c.id)}>
+                {checking.has(c.id) ? "Checking…" : "Refresh"}
+              </button>
             </div>
           ))
         )}

@@ -22,6 +22,12 @@ FLARESOLVERR_URL = os.environ.get("FLARESOLVERR_URL", "http://flaresolverr:8191/
 # reuse it across fetches — only re-solving when it expires or a POST is rejected.
 CF_SESSION_TTL = float(os.environ.get("CF_SESSION_TTL_MINUTES", "15")) * 60
 
+# Max time (ms) we let FlareSolverr spend solving the Cloudflare challenge. Slow
+# CPUs (NAS / mini-PC) need more than the old 60s default or the solve times out
+# and we waste a full minute before retrying.
+FLARESOLVERR_MAX_TIMEOUT_MS = int(os.environ.get("FLARESOLVERR_MAX_TIMEOUT_MS", "120000"))
+_HTTPX_TIMEOUT = FLARESOLVERR_MAX_TIMEOUT_MS / 1000 + 30
+
 
 class _CFSession:
     """A solved Cloudflare session: CF cookies, matching UA, and action ID."""
@@ -192,7 +198,7 @@ async def _solve_cf_session() -> Optional[_CFSession]:
     """
     session_id = None
     try:
-        async with httpx.AsyncClient(timeout=120) as flare_client:
+        async with httpx.AsyncClient(timeout=_HTTPX_TIMEOUT) as flare_client:
             r = await flare_client.post(FLARESOLVERR_URL, json={"cmd": "sessions.create"})
             session_id = r.json()["session"]
 
@@ -201,7 +207,7 @@ async def _solve_cf_session() -> Optional[_CFSession]:
                 "cmd": "request.get",
                 "url": USCIS_ROOT_URL,
                 "session": session_id,
-                "maxTimeout": 60000,
+                "maxTimeout": FLARESOLVERR_MAX_TIMEOUT_MS,
             })
             d1 = r1.json()
             if d1.get("status") != "ok":
@@ -304,3 +310,11 @@ async def fetch_case_status(receipt: str) -> Optional[dict]:
                 return None
 
     return None
+
+
+async def warm_session(force: bool = False) -> bool:
+    """Pre-solve / refresh the Cloudflare session so user fetches skip the cold solve.
+
+    Used at startup and by the keepalive job. ``force`` re-solves even if the cached
+    session is still valid (to renew it before it expires)."""
+    return await _get_cf_session(force=force) is not None

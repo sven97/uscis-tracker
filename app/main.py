@@ -10,15 +10,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import Depends, FastAPI, HTTPException
+import asyncio
+
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app import scheduler as scheduler_mod
 from app.database import get_db, init_db
-from app.models import Case, StatusHistory, record_result
-from app.notify import notify_status_change, send_notification
+from app.models import Case, StatusHistory
+from app.notify import send_notification
+from app.poller import refresh_case as do_refresh
 from app.schemas import (
     CaseCreate,
     CaseEventRead,
@@ -28,7 +30,7 @@ from app.schemas import (
     SettingsUpdate,
 )
 from app.settings_store import get_apprise_urls, get_poll_interval_hours, set_setting
-from app.uscis import fetch_case_status, validate_receipt_number
+from app.uscis import validate_receipt_number, warm_session
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -43,6 +45,8 @@ STATIC_DIR = os.environ.get("STATIC_DIR", "app/static")
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     init_db()
     scheduler_mod.start_scheduler()
+    # Warm the Cloudflare session in the background so the first refresh is fast.
+    asyncio.create_task(warm_session())
     yield
     scheduler_mod.shutdown()
 
@@ -70,7 +74,9 @@ def _get_case_or_404(db: Session, case_id: int) -> Case:
 
 
 @app.post("/api/cases", response_model=CaseRead, status_code=201)
-async def add_case(body: CaseCreate, db: Session = Depends(get_db)) -> CaseRead:
+async def add_case(
+    body: CaseCreate, background: BackgroundTasks, db: Session = Depends(get_db)
+) -> CaseRead:
     receipt = body.receipt_number.strip().upper()
     if not validate_receipt_number(receipt):
         raise HTTPException(422, "Invalid receipt number (expected 3 letters + 10 digits)")
@@ -82,9 +88,8 @@ async def add_case(body: CaseCreate, db: Session = Depends(get_db)) -> CaseRead:
     db.commit()
     db.refresh(case)
 
-    result = await fetch_case_status(receipt)
-    if result:
-        record_result(db, case, result, "manual")
+    # Fetch in the background so adding returns instantly (a cold solve can be slow).
+    background.add_task(do_refresh, case.id, "manual")
     return CaseRead.from_model(case)
 
 
@@ -112,13 +117,14 @@ async def delete_case(case_id: int, db: Session = Depends(get_db)) -> None:
     db.commit()
 
 
-@app.post("/api/cases/{case_id}/refresh", response_model=CaseRead)
-async def refresh_case(case_id: int, db: Session = Depends(get_db)) -> CaseRead:
+@app.post("/api/cases/{case_id}/refresh", response_model=CaseRead, status_code=202)
+async def refresh_case(
+    case_id: int, background: BackgroundTasks, db: Session = Depends(get_db)
+) -> CaseRead:
     case = _get_case_or_404(db, case_id)
-    result = await fetch_case_status(case.receipt_number)
-    if not result:
-        raise HTTPException(502, f"Could not fetch status for {case.receipt_number}")
-    record_result(db, case, result, "manual")
+    # Kick the fetch off in the background and return immediately; the UI polls the
+    # case (last_checked) until the new status lands.
+    background.add_task(do_refresh, case_id, "manual")
     return CaseRead.from_model(case)
 
 

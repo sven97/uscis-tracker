@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import * as casesApi from "../api/cases";
+import { pollUntilChecked } from "../api/poll";
 import { ApiError, type Case, type CaseEvent, type CaseUpdate } from "../api/types";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -12,6 +13,7 @@ export function CaseDetailPage() {
   const [history, setHistory] = useState<CaseEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [nickname, setNickname] = useState("");
+  const [checking, setChecking] = useState(false);
 
   const load = async () => {
     try {
@@ -41,11 +43,16 @@ export function CaseDetailPage() {
   };
 
   const onRefresh = async () => {
+    const since = c?.last_checked ?? null;
+    setChecking(true);
     try {
-      setC(await casesApi.refreshCase(caseId));
+      await casesApi.refreshCase(caseId); // returns immediately; fetch runs in background
+      await pollUntilChecked(caseId, since, setC);
       setHistory(await casesApi.caseHistory(caseId));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Refresh failed");
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -81,7 +88,9 @@ export function CaseDetailPage() {
         <p className="muted" style={{ fontSize: "0.8rem" }}>
           {c.last_checked ? `Last checked: ${new Date(c.last_checked).toLocaleString()}` : "Not yet checked"}
         </p>
-        <button className="secondary small" onClick={onRefresh}>Refresh now</button>
+        <button className="secondary small" onClick={onRefresh} disabled={checking}>
+          {checking ? "Checking…" : "Refresh now"}
+        </button>
       </div>
 
       <div className="card">
