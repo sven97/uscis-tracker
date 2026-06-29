@@ -42,33 +42,35 @@ export function SettingsPage() {
     setMsg(null);
     try {
       await settingsApi.testNotification();
-      setMsg({ text: "Test notification sent — check your channel(s).", ok: true });
+      setMsg({ text: "Test dispatched — check your channel(s).", ok: true });
     } catch (err) {
       setMsg({ text: err instanceof ApiError ? err.message : "Test failed", ok: false });
     }
   };
 
-  if (loading) return <p className="muted">Loading…</p>;
+  if (loading) return <div className="empty">Loading settings…</div>;
 
   return (
-    <>
-      <p><Link to="/">← Back to cases</Link></p>
-      <h1>Settings</h1>
+    <div className="fade-in">
+      <Link to="/" className="backlink">← Registry</Link>
 
-      {msg && (
-        <div className={msg.ok ? "success-box" : "error"}>{msg.text}</div>
-      )}
+      <div className="page-head" style={{ marginTop: "0.9rem" }}>
+        <div className="eyebrow">Preferences</div>
+        <h1>Settings</h1>
+      </div>
 
-      <div className="card">
-        <h2>Notifications</h2>
-        <p className="muted" style={{ fontSize: "0.85rem", marginTop: 0 }}>
-          One <a href="https://github.com/caronc/apprise/wiki" target="_blank" rel="noreferrer">Apprise URL</a> per
-          line. Supports Telegram, Discord, ntfy, Slack, email, Gotify, Matrix, webhooks, and 100+ more.
-          Examples:
+      {msg && <div className={msg.ok ? "ok-box" : "error-box"}>{msg.text}</div>}
+
+      <div className="panel">
+        <div className="panel-title">Notification channels</div>
+        <p className="muted" style={{ fontSize: "0.88rem", lineHeight: 1.6, marginTop: 0 }}>
+          One{" "}
+          <a href="https://github.com/caronc/apprise/wiki" target="_blank" rel="noreferrer">Apprise URL</a>{" "}
+          per line — Telegram, Discord, ntfy, Slack, email, Gotify, Matrix, webhooks, and 100+ more.
         </p>
-        <pre className="hint">{`tgram://bottoken/ChatID
+        <pre className="codeblock">{`ntfy://ntfy.sh/my-uscis-topic
+tgram://bottoken/ChatID
 discord://webhook_id/webhook_token
-ntfy://ntfy.sh/your-topic
 mailto://user:pass@gmail.com`}</pre>
         <div className="field">
           <label>Apprise URLs</label>
@@ -77,19 +79,19 @@ mailto://user:pass@gmail.com`}</pre>
         </div>
       </div>
 
-      <div className="card">
-        <h2>Polling</h2>
-        <div className="field" style={{ maxWidth: 220 }}>
-          <label>Check interval (hours)</label>
+      <div className="panel">
+        <div className="panel-title">Polling</div>
+        <div className="field" style={{ maxWidth: 200 }}>
+          <label>Check interval — hours</label>
           <input type="number" min={0.1} step={0.5} value={interval}
             onChange={(e) => setIntervalHours(e.target.value)} />
         </div>
       </div>
 
       <div className="row">
-        <button onClick={save}>Save</button>
-        <button className="secondary" onClick={test}>Send test notification</button>
+        <button className="btn btn-primary" onClick={save}>Save changes</button>
+        <button className="btn btn-ghost" onClick={test}>Send test notification</button>
       </div>
-    </>
+    </div>
   );
 }

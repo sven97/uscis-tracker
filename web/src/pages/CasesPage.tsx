@@ -1,11 +1,21 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import * as casesApi from "../api/cases";
 import { pollUntilChecked } from "../api/poll";
 import { ApiError, type Case } from "../api/types";
-import { StatusBadge } from "../components/StatusBadge";
+import { railColor, StatusBadge } from "../components/StatusBadge";
 
 type Filter = "all" | "active" | "finished";
+
+function lastChecked(iso: string | null): string {
+  if (!iso) return "Never checked";
+  const d = new Date(iso);
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return "Checked just now";
+  if (mins < 60) return `Checked ${mins}m ago`;
+  if (mins < 1440) return `Checked ${Math.round(mins / 60)}h ago`;
+  return `Checked ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+}
 
 export function CasesPage() {
   const [cases, setCases] = useState<Case[]>([]);
@@ -24,7 +34,6 @@ export function CasesPage() {
       on ? n.add(id) : n.delete(id);
       return n;
     });
-
   const replaceCase = (c: Case) => setCases((cs) => cs.map((x) => (x.id === c.id ? c : x)));
 
   const load = async () => {
@@ -54,7 +63,6 @@ export function CasesPage() {
       setReceipt("");
       setNickname("");
       await load();
-      // The first status arrives in the background — poll for it.
       setChecker(created.id, true);
       pollUntilChecked(created.id, created.last_checked, replaceCase).finally(() =>
         setChecker(created.id, false),
@@ -70,7 +78,7 @@ export function CasesPage() {
     const since = cases.find((c) => c.id === id)?.last_checked ?? null;
     setChecker(id, true);
     try {
-      await casesApi.refreshCase(id); // returns immediately; fetch runs in background
+      await casesApi.refreshCase(id);
       await pollUntilChecked(id, since, replaceCase);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Refresh failed");
@@ -82,67 +90,86 @@ export function CasesPage() {
   const shown = cases.filter((c) =>
     filter === "all" ? true : filter === "finished" ? c.is_finished : !c.is_finished,
   );
+  const activeCount = cases.filter((c) => !c.is_finished).length;
+  const doneCount = cases.length - activeCount;
 
   return (
     <>
-      <h1>My Cases</h1>
+      <div className="page-head">
+        <div className="eyebrow">Tracking Registry</div>
+        <h1>Your case files</h1>
+        <div className="tally">
+          {String(activeCount).padStart(2, "0")} active &nbsp;·&nbsp;{" "}
+          {String(doneCount).padStart(2, "0")} complete
+        </div>
+      </div>
 
-      <form className="card" onSubmit={onAdd}>
-        <div className="row">
-          <div className="field" style={{ flex: 2 }}>
+      <form className="panel" onSubmit={onAdd}>
+        <div className="add-card">
+          <div className="field">
             <label>Receipt number</label>
-            <input type="text" placeholder="e.g. IOE1234567890" value={receipt} required
+            <input type="text" name="receipt" placeholder="IOE1234567890" value={receipt} required
               pattern="[A-Za-z]{3}\d{10}" title="3 letters + 10 digits"
               onChange={(e) => setReceipt(e.target.value)} />
           </div>
-          <div className="field" style={{ flex: 2 }}>
-            <label>Nickname (optional)</label>
-            <input type="text" placeholder="e.g. My EAD" value={nickname}
+          <div className="field">
+            <label>Nickname — optional</label>
+            <input type="text" placeholder="My work permit" value={nickname}
               onChange={(e) => setNickname(e.target.value)} />
           </div>
-          <button type="submit" disabled={adding}>{adding ? "Adding…" : "Track case"}</button>
+          <button type="submit" className="btn btn-primary" disabled={adding}>
+            {adding ? "Filing…" : "Open a file"}
+          </button>
         </div>
       </form>
 
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error-box">{error}</div>}
 
       <div className="tabs">
         {(["all", "active", "finished"] as Filter[]).map((f) => (
-          <button key={f} className={filter === f ? "active" : ""} onClick={() => setFilter(f)}>
-            {f[0].toUpperCase() + f.slice(1)}
+          <button key={f} className={`tab${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
+            {f}
           </button>
         ))}
       </div>
 
-      <div className="card">
-        {loading ? (
-          <p className="muted">Loading…</p>
-        ) : shown.length === 0 ? (
-          <p className="muted">No cases. Add a receipt number above to start tracking.</p>
-        ) : (
-          shown.map((c) => (
-            <div className="case-row" key={c.id}>
+      {loading ? (
+        <div className="empty">Opening the registry…</div>
+      ) : shown.length === 0 ? (
+        <div className="empty">No files here yet. Open one above to begin tracking.</div>
+      ) : (
+        shown.map((c, i) => (
+          <article
+            className="dossier"
+            key={c.id}
+            style={{ "--rail": railColor(c.status), animationDelay: `${i * 60}ms` } as CSSProperties}
+          >
+            <div className="dossier-main">
               <div>
-                <div className="case-title">
-                  <Link to={`/cases/${c.id}`}>{c.nickname || c.receipt_number}</Link>{" "}
-                  {c.form_num && <span className="muted">· {c.form_num}</span>}
-                </div>
-                <div className="case-receipt">{c.receipt_number}</div>
-                <div className="case-status">
-                  <StatusBadge c={c} />{" "}
-                  {c.is_finished && <span className="badge dark">Done</span>}{" "}
-                  {!c.notify && <span className="badge">🔕 muted</span>}{" "}
-                  {checking.has(c.id) && <span className="badge blue">Checking…</span>}
-                </div>
+                {c.form_num && <span className="form-chip">{c.form_num}</span>}
+                {c.form_title && <span className="form-title">{c.form_title}</span>}
               </div>
-              <button className="secondary small" disabled={checking.has(c.id)}
-                onClick={() => onRefresh(c.id)}>
+              <h2 className="dossier-name">
+                <Link to={`/cases/${c.id}`}>{c.nickname || c.receipt_number}</Link>
+              </h2>
+              <div className="receipt">{c.receipt_number}</div>
+              <div className="dossier-foot">
+                <span className="timestamp">{lastChecked(c.last_checked)}</span>
+                {!c.notify && <span className="muted-chip">muted</span>}
+                {checking.has(c.id) && (
+                  <span className="checking-chip"><span className="dot" />Checking</span>
+                )}
+              </div>
+            </div>
+            <div className="dossier-side">
+              <StatusBadge c={c} />
+              <button className="btn btn-ghost btn-sm" disabled={checking.has(c.id)} onClick={() => onRefresh(c.id)}>
                 {checking.has(c.id) ? "Checking…" : "Refresh"}
               </button>
             </div>
-          ))
-        )}
-      </div>
+          </article>
+        ))
+      )}
     </>
   );
 }

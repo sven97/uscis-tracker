@@ -17,3 +17,7 @@ web/dist/
 # Tooling
 .playwright-mcp/
 .DS_Store
+
+# scratch
+*.png
+.playwright-mcp/

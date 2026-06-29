@@ -13,6 +13,7 @@ load_dotenv()
 import asyncio
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -52,6 +53,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
 
 app = FastAPI(title="USCIS Case Tracker", lifespan=lifespan)
+
+# Production serves the SPA same-origin (no CORS needed); this is only for local
+# dev where the Vite server (5173) calls the API on another port.
+_cors = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _cors.split(",") if o.strip()],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── API ───────────────────────────────────────────────────────────────────────

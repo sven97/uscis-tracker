@@ -3,16 +3,20 @@ import { Link } from "react-router-dom";
 
 export function Layout({ children }: { children: ReactNode }) {
   return (
-    <>
-      <nav className="navbar">
-        <div className="brand">
-          <Link to="/">🛡 USCIS Tracker</Link>
-        </div>
-        <div className="right">
-          <Link to="/settings">⚙ Settings</Link>
-        </div>
-      </nav>
-      <div className="container">{children}</div>
-    </>
+    <div className="shell">
+      <header className="masthead">
+        <Link to="/" className="brand">
+          <span className="seal">USA</span>
+          <span className="brand-text">
+            <span className="title">Case Files</span>
+            <span className="sub">USCIS · Status Registry</span>
+          </span>
+        </Link>
+        <Link to="/settings" className="nav-link">
+          Settings
+        </Link>
+      </header>
+      {children}
+    </div>
   );
 }
