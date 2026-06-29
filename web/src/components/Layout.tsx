@@ -6,7 +6,6 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="shell">
       <header className="masthead">
         <Link to="/" className="brand">
-          <span className="seal">USA</span>
           <span className="brand-text">
             <span className="title">USCIS Case Tracker</span>
           </span>
