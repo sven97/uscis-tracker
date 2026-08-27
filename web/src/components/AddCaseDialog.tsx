@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { createPortal } from "react-dom";
 import { ArrowLeft, LoaderCircle, Plus } from "lucide-react";
 import * as casesApi from "../api/cases";
 import { ApiError, type Case, type CasePreview } from "../api/types";
@@ -86,16 +85,10 @@ export function AddCaseDialog({ onAdded }: { onAdded: (created: Case) => void })
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {createPortal(
-        <Button
-          onClick={() => setOpen(true)}
-          aria-label="Track a new case"
-          className="fixed right-5 bottom-6 z-40 size-14 rounded-full p-0 shadow-lg"
-        >
-          <Plus className="size-6" />
-        </Button>,
-        document.body,
-      )}
+      <Button size="sm" onClick={() => setOpen(true)}>
+        <Plus />
+        Track a case
+      </Button>
 
       <DialogContent>
         {step === "lookup" ? (
