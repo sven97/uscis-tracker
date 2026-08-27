@@ -21,3 +21,6 @@ web/dist/
 # scratch
 *.png
 .playwright-mcp/
+
+# TS build cache
+web/*.tsbuildinfo

@@ -1,6 +1,8 @@
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { Case } from "../api/types";
 
-type Tone = "green" | "amber" | "rust" | "slate" | "none";
+export type Tone = "green" | "amber" | "rust" | "slate" | "none";
 
 export function statusTone(status: string | null): Tone {
   if (!status) return "none";
@@ -21,25 +23,47 @@ export function statusTone(status: string | null): Tone {
   return "green";
 }
 
-/** The rail/accent color a case uses (CSS var value) based on its status. */
-export function railColor(status: string | null): string {
-  const tone = statusTone(status);
-  return {
-    green: "var(--green)",
-    amber: "var(--amber)",
-    rust: "var(--rust)",
-    slate: "var(--slate)",
-    none: "var(--line-strong)",
-  }[tone];
+/* Full class strings so Tailwind's scanner keeps them. */
+const TONE: Record<Tone, { badge: string; rail: string }> = {
+  green: {
+    badge: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
+    rail: "bg-emerald-500",
+  },
+  amber: {
+    badge: "bg-amber-500/12 text-amber-700 dark:text-amber-400 border-amber-500/25",
+    rail: "bg-amber-500",
+  },
+  rust: {
+    badge: "bg-red-500/12 text-red-700 dark:text-red-400 border-red-500/25",
+    rail: "bg-red-500",
+  },
+  slate: {
+    badge: "bg-sky-500/12 text-sky-700 dark:text-sky-400 border-sky-500/25",
+    rail: "bg-sky-500",
+  },
+  none: {
+    badge: "bg-muted text-muted-foreground border-border",
+    rail: "bg-muted-foreground/40",
+  },
+};
+
+/** Tailwind bg-* class for a case's left accent rail. */
+export function railClass(status: string | null): string {
+  return TONE[statusTone(status)].rail;
 }
 
-export function StatusBadge({ c }: { c: Case }) {
+export function StatusBadge({ c, className }: { c: Case; className?: string }) {
   const tone = statusTone(c.status);
-  const done = c.is_finished;
   return (
-    <span className={`stamp tone-${tone}${done ? " done" : ""}`}>
-      {done && "✓ "}
-      {c.status ?? "Pending"}
-    </span>
+    <Badge
+      variant="outline"
+      className={cn(
+        "h-auto whitespace-normal border px-2 py-1 text-[0.7rem] leading-tight font-semibold tracking-wide uppercase",
+        TONE[tone].badge,
+        className,
+      )}
+    >
+      {c.is_finished ? `✓ ${c.status ?? "Pending"}` : (c.status ?? "Pending")}
+    </Badge>
   );
 }

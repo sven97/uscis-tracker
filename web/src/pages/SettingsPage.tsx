@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import * as settingsApi from "../api/settings";
 import { ApiError } from "../api/types";
+import { Button, buttonVariants } from "@/components/animate-ui/components/buttons/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 export function SettingsPage() {
   const [urls, setUrls] = useState("");
@@ -48,49 +56,85 @@ export function SettingsPage() {
     }
   };
 
-  if (loading) return <div className="empty">Loading settings…</div>;
+  if (loading) {
+    return <p className="py-14 text-center text-muted-foreground">Loading settings…</p>;
+  }
 
   return (
-    <div className="fade-in">
-      <Link to="/" className="backlink">← Registry</Link>
+    <div className="space-y-6">
+      <Link
+        to="/"
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "-ml-3")}
+      >
+        <ArrowLeft />
+        All cases
+      </Link>
 
-      <div className="page-head" style={{ marginTop: "0.9rem" }}>
-        <div className="eyebrow">Preferences</div>
-        <h1>Settings</h1>
-      </div>
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">Settings</h1>
 
-      {msg && <div className={msg.ok ? "ok-box" : "error-box"}>{msg.text}</div>}
+      {msg && (
+        <Alert variant={msg.ok ? "default" : "destructive"}>
+          <AlertDescription>{msg.text}</AlertDescription>
+        </Alert>
+      )}
 
-      <div className="panel">
-        <div className="panel-title">Notification channels</div>
-        <p className="muted" style={{ fontSize: "0.88rem", lineHeight: 1.6, marginTop: 0 }}>
-          One{" "}
-          <a href="https://github.com/caronc/apprise/wiki" target="_blank" rel="noreferrer">Apprise URL</a>{" "}
-          per line — Telegram, Discord, ntfy, Slack, email, Gotify, Matrix, webhooks, and 100+ more.
-        </p>
-        <pre className="codeblock">{`ntfy://ntfy.sh/my-uscis-topic
+      <Card>
+        <CardContent className="space-y-3">
+          <CardTitle>Notification channels</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            One{" "}
+            <a
+              className="underline underline-offset-2 hover:text-foreground"
+              href="https://github.com/caronc/apprise/wiki"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Apprise URL
+            </a>{" "}
+            per line — Telegram, Discord, ntfy, Slack, email, Gotify, Matrix, webhooks, and 100+ more.
+          </p>
+          <pre className="overflow-x-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed text-muted-foreground">
+{`ntfy://ntfy.sh/my-uscis-topic
 tgram://bottoken/ChatID
 discord://webhook_id/webhook_token
-mailto://user:pass@gmail.com`}</pre>
-        <div className="field">
-          <label>Apprise URLs</label>
-          <textarea rows={5} value={urls} onChange={(e) => setUrls(e.target.value)}
-            placeholder="ntfy://ntfy.sh/my-uscis-topic" />
-        </div>
-      </div>
+mailto://user:pass@gmail.com`}
+          </pre>
+          <div className="space-y-1.5">
+            <Label htmlFor="apprise">Apprise URLs</Label>
+            <Textarea
+              id="apprise"
+              rows={5}
+              className="font-mono text-xs"
+              value={urls}
+              onChange={(e) => setUrls(e.target.value)}
+              placeholder="ntfy://ntfy.sh/my-uscis-topic"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="panel">
-        <div className="panel-title">Polling</div>
-        <div className="field" style={{ maxWidth: 200 }}>
-          <label>Check interval — hours</label>
-          <input type="number" min={0.1} step={0.5} value={interval}
-            onChange={(e) => setIntervalHours(e.target.value)} />
-        </div>
-      </div>
+      <Card>
+        <CardContent className="space-y-3">
+          <CardTitle>Polling</CardTitle>
+          <div className="max-w-[200px] space-y-1.5">
+            <Label htmlFor="interval">Check interval — hours</Label>
+            <Input
+              id="interval"
+              type="number"
+              min={0.1}
+              step={0.5}
+              value={interval}
+              onChange={(e) => setIntervalHours(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="row">
-        <button className="btn btn-primary" onClick={save}>Save changes</button>
-        <button className="btn btn-ghost" onClick={test}>Send test notification</button>
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={save}>Save changes</Button>
+        <Button variant="outline" onClick={test}>
+          Send test notification
+        </Button>
       </div>
     </div>
   );

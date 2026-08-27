@@ -1,9 +1,28 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { motion } from "motion/react";
+import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
 import * as casesApi from "../api/cases";
 import { pollUntilChecked } from "../api/poll";
 import { ApiError, type Case, type CaseEvent, type CaseUpdate } from "../api/types";
-import { railColor, StatusBadge } from "../components/StatusBadge";
+import { railClass, StatusBadge } from "../components/StatusBadge";
+import { Button, buttonVariants } from "@/components/animate-ui/components/buttons/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 const fmt = (iso: string) =>
   new Date(iso).toLocaleString(undefined, {
@@ -19,6 +38,7 @@ export function CaseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [nickname, setNickname] = useState("");
   const [checking, setChecking] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const load = async () => {
     try {
@@ -62,94 +82,173 @@ export function CaseDetailPage() {
   };
 
   const onDelete = async () => {
-    if (!confirm("Stop tracking this case?")) return;
     try {
       await casesApi.deleteCase(caseId);
       navigate("/");
     } catch (err) {
+      setConfirmOpen(false);
       setError(err instanceof ApiError ? err.message : "Delete failed");
     }
   };
 
-  if (error && !c) return <div className="error-box">{error}</div>;
-  if (!c) return <div className="empty">Loading…</div>;
+  if (error && !c) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+  if (!c) return <p className="py-14 text-center text-muted-foreground">Loading…</p>;
 
   return (
-    <div className="fade-in">
-      <Link to="/" className="backlink">← All cases</Link>
+    <div className="space-y-6">
+      <Link
+        to="/"
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "-ml-3")}
+      >
+        <ArrowLeft />
+        All cases
+      </Link>
 
-      <div className="detail-head">
-        <h1>{c.nickname || c.receipt_number}</h1>
-        <div className="detail-meta">
+      <div>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          {c.nickname || c.receipt_number}
+        </h1>
+        <p className="mt-1 font-mono text-sm text-muted-foreground">
           {c.receipt_number}
           {c.form_title && `  ·  ${c.form_num} — ${c.form_title}`}
-        </div>
+        </p>
       </div>
 
-      {error && <div className="error-box">{error}</div>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <div className="notice" style={{ borderLeftColor: railColor(c.status) }}>
-        <div className="notice-stamp-row">
-          <StatusBadge c={c} />
-          <span className="timestamp">
-            {c.last_checked ? `Checked ${fmt(c.last_checked)}` : "Not yet checked"}
-          </span>
-          <button className="btn btn-ghost btn-sm" onClick={onRefresh} disabled={checking}
-            style={{ marginLeft: "auto" }}>
-            {checking ? "Checking…" : "Refresh now"}
-          </button>
-        </div>
-        {c.detail && <div className="notice-body" dangerouslySetInnerHTML={{ __html: c.detail }} />}
-      </div>
-
-      <div className="panel">
-        <div className="panel-title">Settings</div>
-        <div className="row" style={{ marginBottom: "1.1rem" }}>
-          <div className="field" style={{ flex: 1, minWidth: 200 }}>
-            <label>Nickname</label>
-            <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+      <Card className="relative overflow-hidden">
+        <div className={cn("absolute inset-y-0 left-0 w-1", railClass(c.status))} />
+        <CardContent className="space-y-3 pl-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge c={c} />
+            <span className="font-mono text-xs text-muted-foreground">
+              {c.last_checked ? `Checked ${fmt(c.last_checked)}` : "Not yet checked"}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto"
+              onClick={onRefresh}
+              disabled={checking}
+            >
+              <RefreshCw className={cn(checking && "animate-spin")} />
+              {checking ? "Checking…" : "Refresh now"}
+            </Button>
           </div>
-          <button className="btn btn-ghost" onClick={() => patch({ nickname: nickname.trim() || null })}>
-            Save
-          </button>
-        </div>
-        <div className="toggle-row">
-          <span className="label">Notify me when this case changes</span>
-          <label className="toggle">
-            <input type="checkbox" checked={c.notify}
-              onChange={(e) => patch({ notify: e.target.checked })} />
-            <span className="track" />
-            <span className="knob" />
-          </label>
-        </div>
-      </div>
+          {c.detail && (
+            <div
+              className="text-sm leading-relaxed text-muted-foreground [&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-2"
+              dangerouslySetInnerHTML={{ __html: c.detail }}
+            />
+          )}
+        </CardContent>
+      </Card>
 
-      <div className="panel">
-        <div className="panel-title">History</div>
-        {history.length === 0 ? (
-          <p className="muted" style={{ margin: 0 }}>No status changes recorded yet.</p>
-        ) : (
-          <div className="timeline">
-            {history.map((e, i) => (
-              <div className="tl-item" key={i}
-                style={{ "--rail": railColor(e.action_code_text), animationDelay: `${i * 50}ms` } as CSSProperties}>
-                <div className="tl-head">
-                  <span className="tl-status">
-                    {e.action_code_text}
-                    <span className="tl-source">{e.source}</span>
-                  </span>
-                  <span className="tl-date">{fmt(e.recorded_at)}</span>
-                </div>
-                {e.action_code_desc && (
-                  <p className="tl-desc" dangerouslySetInnerHTML={{ __html: e.action_code_desc }} />
-                )}
-              </div>
-            ))}
+      <Card>
+        <CardContent className="space-y-4">
+          <CardTitle>Settings</CardTitle>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[200px] flex-1 space-y-1.5">
+              <Label htmlFor="nickname">Nickname</Label>
+              <Input
+                id="nickname"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => patch({ nickname: nickname.trim() || null })}
+            >
+              Save
+            </Button>
           </div>
-        )}
-      </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm">Notify me when this case changes</span>
+            <Switch
+              checked={c.notify}
+              onCheckedChange={(checked) => patch({ notify: checked })}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      <button className="btn btn-danger" onClick={onDelete}>Stop tracking</button>
+      <Card>
+        <CardContent className="space-y-4">
+          <CardTitle>History</CardTitle>
+          {history.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No status changes recorded yet.</p>
+          ) : (
+            <ol className="relative space-y-6 border-l pl-6">
+              {history.map((e, i) => (
+                <motion.li
+                  key={i}
+                  className="relative"
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04, duration: 0.2 }}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-1 -left-[27px] size-3 rounded-full ring-4 ring-card",
+                      railClass(e.action_code_text),
+                    )}
+                  />
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="font-heading font-medium">
+                      {e.action_code_text}
+                      <span className="ml-2 rounded border px-1 py-0.5 font-mono text-[0.6rem] uppercase text-muted-foreground">
+                        {e.source}
+                      </span>
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {fmt(e.recorded_at)}
+                    </span>
+                  </div>
+                  {e.action_code_desc && (
+                    <p
+                      className="mt-1 text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_a]:underline-offset-2"
+                      dangerouslySetInnerHTML={{ __html: e.action_code_desc }}
+                    />
+                  )}
+                </motion.li>
+              ))}
+            </ol>
+          )}
+        </CardContent>
+      </Card>
+
+      <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
+        <Trash2 />
+        Stop tracking
+      </Button>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Stop tracking this case?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The tracker will stop checking {c.receipt_number} and remove it from your list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onDelete}>
+              Stop tracking
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
