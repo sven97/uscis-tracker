@@ -26,6 +26,16 @@ export interface CaseCreate {
   notify?: boolean;
 }
 
+/** A one-off status lookup for a receipt that is not tracked yet. */
+export interface CasePreview {
+  receipt_number: string;
+  status: string;
+  detail: string | null;
+  form_num: string | null;
+  form_title: string | null;
+  is_finished: boolean;
+}
+
 export interface CaseUpdate {
   nickname?: string | null;
   notify?: boolean;

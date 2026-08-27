@@ -52,8 +52,17 @@ export function railClass(status: string | null): string {
   return TONE[statusTone(status)].rail;
 }
 
-export function StatusBadge({ c, className }: { c: Case; className?: string }) {
-  const tone = statusTone(c.status);
+/** Presentational status pill — works from a raw status string. */
+export function StatusPill({
+  status,
+  finished = false,
+  className,
+}: {
+  status: string | null;
+  finished?: boolean;
+  className?: string;
+}) {
+  const tone = statusTone(status);
   return (
     <Badge
       variant="outline"
@@ -63,7 +72,11 @@ export function StatusBadge({ c, className }: { c: Case; className?: string }) {
         className,
       )}
     >
-      {c.is_finished ? `✓ ${c.status ?? "Pending"}` : (c.status ?? "Pending")}
+      {finished ? `✓ ${status ?? "Pending"}` : (status ?? "Pending")}
     </Badge>
   );
+}
+
+export function StatusBadge({ c, className }: { c: Case; className?: string }) {
+  return <StatusPill status={c.status} finished={c.is_finished} className={className} />;
 }

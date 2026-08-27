@@ -1,7 +1,14 @@
 import { apiFetch } from "./client";
-import type { Case, CaseCreate, CaseEvent, CaseUpdate } from "./types";
+import type { Case, CaseCreate, CaseEvent, CasePreview, CaseUpdate } from "./types";
 
 export const listCases = () => apiFetch<Case[]>("/cases");
+
+/** Look up a receipt's current status without adding it to the tracking list. */
+export const previewCase = (receipt_number: string) =>
+  apiFetch<CasePreview>("/cases/preview", {
+    method: "POST",
+    body: JSON.stringify({ receipt_number }),
+  });
 
 export const createCase = (body: CaseCreate) =>
   apiFetch<Case>("/cases", { method: "POST", body: JSON.stringify(body) });
