@@ -214,6 +214,16 @@ textarea { font-family: var(--font-mono); font-size: 0.84rem; line-height: 1.6; 
 .timestamp { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.02em; }
 .dossier-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.7rem; flex: none; }
 
+/* Narrow screens: stack the row so a long status stamp can't crush the title */
+@media (max-width: 620px) {
+  .dossier { flex-direction: column; gap: 0.9rem; padding-right: 1.4rem; }
+  .dossier-side {
+    flex-direction: row; align-items: center; justify-content: space-between;
+    gap: 0.6rem 0.8rem; width: 100%; flex-wrap: wrap;
+  }
+  .dossier-side .stamp { white-space: normal; }
+}
+
 /* ── Status stamp ────────────────────────────────────────────────────────── */
 .stamp {
   font-family: var(--font-mono); font-size: 0.66rem; font-weight: 600;
