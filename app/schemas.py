@@ -28,6 +28,17 @@ class CaseUpdate(BaseModel):
     notify: bool | None = None
 
 
+class CasePreview(BaseModel):
+    """A one-off status lookup for a receipt number that is not tracked yet."""
+
+    receipt_number: str
+    status: str
+    detail: str | None
+    form_num: str | None
+    form_title: str | None
+    is_finished: bool
+
+
 class CaseRead(BaseModel):
     id: int
     receipt_number: str

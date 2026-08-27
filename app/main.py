@@ -25,13 +25,19 @@ from app.poller import refresh_case as do_refresh
 from app.schemas import (
     CaseCreate,
     CaseEventRead,
+    CasePreview,
     CaseRead,
     CaseUpdate,
     SettingsRead,
     SettingsUpdate,
 )
 from app.settings_store import get_apprise_urls, get_poll_interval_hours, set_setting
-from app.uscis import validate_receipt_number, warm_session
+from app.uscis import (
+    fetch_case_status,
+    is_terminal_status,
+    validate_receipt_number,
+    warm_session,
+)
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -82,6 +88,30 @@ def _get_case_or_404(db: Session, case_id: int) -> Case:
     if case is None:
         raise HTTPException(404, "Case not found")
     return case
+
+
+@app.post("/api/cases/preview", response_model=CasePreview)
+async def preview_case(body: CaseCreate, db: Session = Depends(get_db)) -> CasePreview:
+    """Fetch a receipt's current status without adding it to the tracking list."""
+    receipt = body.receipt_number.strip().upper()
+    if not validate_receipt_number(receipt):
+        raise HTTPException(422, "Invalid receipt number (expected 3 letters + 10 digits)")
+    if db.query(Case).filter(Case.receipt_number == receipt).first():
+        raise HTTPException(409, f"Case {receipt} is already tracked")
+
+    result = await fetch_case_status(receipt)
+    if not result:
+        raise HTTPException(
+            502, "Couldn't find a case for that receipt number (or USCIS is unreachable). Try again in a moment."
+        )
+    return CasePreview(
+        receipt_number=receipt,
+        status=result["action_code_text"],
+        detail=result.get("action_code_desc") or None,
+        form_num=result.get("form_num"),
+        form_title=result.get("form_title"),
+        is_finished=is_terminal_status(result["action_code_text"]),
+    )
 
 
 @app.post("/api/cases", response_model=CaseRead, status_code=201)
