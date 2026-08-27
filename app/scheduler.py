@@ -25,9 +25,11 @@ _scheduler: AsyncIOScheduler | None = None
 
 
 def _active_case_ids() -> list[int]:
+    """Cases the scheduler keeps polling: everything the user hasn't archived.
+    A terminal-looking status no longer stops the checks — only the user can."""
     db = SessionLocal()
     try:
-        return [c.id for c in db.query(Case).filter(Case.is_finished.isnot(True)).all()]
+        return [c.id for c in db.query(Case).filter(Case.archived.isnot(True)).all()]
     finally:
         db.close()
 

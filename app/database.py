@@ -24,6 +24,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     _migrate_to_uscis_field_names()
     _migrate_notify_column()
+    _migrate_archived_column()
 
 
 def _migrate_notify_column():
@@ -36,6 +37,18 @@ def _migrate_notify_column():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE cases RENAME COLUMN notify_email TO notify"))
             logger.info("Migrated cases.notify_email → notify")
+
+
+def _migrate_archived_column():
+    """Add cases.archived (user-set 'stop watching' flag). Idempotent."""
+    insp = inspect(engine)
+    if "cases" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("cases")}
+    if "archived" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE cases ADD COLUMN archived BOOLEAN DEFAULT 0"))
+            logger.info("Added column cases.archived")
 
 
 def _migrate_to_uscis_field_names():
