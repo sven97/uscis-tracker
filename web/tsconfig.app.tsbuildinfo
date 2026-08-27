@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/cases.ts","./src/api/client.ts","./src/api/poll.ts","./src/api/settings.ts","./src/api/types.ts","./src/components/layout.tsx","./src/components/statusbadge.tsx","./src/pages/casedetailpage.tsx","./src/pages/casespage.tsx","./src/pages/settingspage.tsx"],"version":"5.9.3"}
