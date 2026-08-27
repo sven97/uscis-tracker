@@ -84,7 +84,10 @@ export function CasesPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="font-heading text-xl font-semibold tracking-tight">Your cases</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-heading text-xl font-semibold tracking-tight">Your cases</h2>
+        <AddCaseDialog onAdded={onAdded} />
+      </div>
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
         <TabsList variant="line">
@@ -105,7 +108,7 @@ export function CasesPage() {
       ) : shown.length === 0 ? (
         <p className="py-14 text-center text-muted-foreground">
           {cases.length === 0
-            ? "No cases yet. Use the + button to look up a receipt number."
+            ? 'No cases yet. Use "Track a case" to look up a receipt number.'
             : `No ${filter} cases.`}
         </p>
       ) : (
@@ -174,8 +177,6 @@ export function CasesPage() {
           ))}
         </motion.ul>
       )}
-
-      <AddCaseDialog onAdded={onAdded} />
     </div>
   );
 }
