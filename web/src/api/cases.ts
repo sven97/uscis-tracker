@@ -18,6 +18,9 @@ export const getCase = (id: number) => apiFetch<Case>(`/cases/${id}`);
 export const updateCase = (id: number, body: CaseUpdate) =>
   apiFetch<Case>(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 
+export const setArchived = (id: number, archived: boolean) =>
+  updateCase(id, { archived });
+
 export const deleteCase = (id: number) =>
   apiFetch<void>(`/cases/${id}`, { method: "DELETE" });
 

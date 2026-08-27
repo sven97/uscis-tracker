@@ -26,6 +26,7 @@ class CaseCreate(BaseModel):
 class CaseUpdate(BaseModel):
     nickname: str | None = None
     notify: bool | None = None
+    archived: bool | None = None
 
 
 class CasePreview(BaseModel):
@@ -49,6 +50,7 @@ class CaseRead(BaseModel):
     form_title: str | None
     is_valid: bool | None
     is_finished: bool
+    archived: bool
     last_checked: datetime | None
     notify: bool
     created_at: datetime
@@ -69,6 +71,7 @@ class CaseRead(BaseModel):
             form_title=c.form_title,
             is_valid=c.is_valid,
             is_finished=bool(c.is_finished),
+            archived=bool(c.archived),
             last_checked=c.last_checked,
             notify=bool(c.notify),
             created_at=c.created_at,

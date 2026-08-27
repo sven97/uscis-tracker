@@ -8,6 +8,7 @@ export interface Case {
   form_title: string | null;
   is_valid: boolean | null;
   is_finished: boolean;
+  archived: boolean;
   last_checked: string | null;
   notify: boolean;
   created_at: string;
@@ -39,6 +40,7 @@ export interface CasePreview {
 export interface CaseUpdate {
   nickname?: string | null;
   notify?: boolean;
+  archived?: boolean;
 }
 
 export interface Settings {

@@ -35,6 +35,7 @@ class Case(Base):
     action_code_text = Column(Text, nullable=True)
     action_code_desc = Column(Text, nullable=True)
     is_finished      = Column(Boolean, default=False)  # derived: terminal status reached
+    archived         = Column(Boolean, default=False)  # user-set: stop actively watching
     last_checked     = Column(DateTime, nullable=True)
     created_at       = Column(DateTime, default=datetime.utcnow)
     notify           = Column(Boolean, default=True)  # send notifications on change

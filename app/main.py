@@ -146,6 +146,8 @@ async def update_case(case_id: int, body: CaseUpdate, db: Session = Depends(get_
         case.nickname = body.nickname.strip() or None
     if body.notify is not None:
         case.notify = body.notify
+    if body.archived is not None:
+        case.archived = body.archived
     db.commit()
     db.refresh(case)
     return CaseRead.from_model(case)

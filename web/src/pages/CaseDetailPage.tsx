@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { ArrowLeft, Bell, BellOff, Check, Clock, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  Bell,
+  BellOff,
+  Check,
+  Clock,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import * as casesApi from "../api/cases";
 import { pollUntilChecked } from "../api/poll";
 import { ApiError, type Case, type CaseEvent, type CaseUpdate } from "../api/types";
@@ -70,6 +82,11 @@ export function CaseDetailPage() {
   const saveName = async () => {
     await patch({ nickname: nameDraft.trim() || null });
     setEditingName(false);
+  };
+
+  const archive = async (archived: boolean) => {
+    await patch({ archived });
+    if (archived) navigate("/");
   };
 
   const onRefresh = async () => {
@@ -167,6 +184,11 @@ export function CaseDetailPage() {
           )}
           {c.form_title && caseTitle(c) !== c.form_title && <span>{c.form_title}</span>}
           {!titleIsReceipt(c) && <span className="font-mono text-xs">{c.receipt_number}</span>}
+          {c.archived && (
+            <span className="rounded-full border px-2 py-0.5 text-[0.7rem] font-medium uppercase tracking-wide">
+              Archived
+            </span>
+          )}
         </div>
       </div>
 
@@ -196,6 +218,15 @@ export function CaseDetailPage() {
               className="text-sm leading-relaxed text-muted-foreground [&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-2"
               dangerouslySetInnerHTML={{ __html: c.detail }}
             />
+          )}
+          {c.is_finished && !c.archived && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+              <span>This status looks final. Archive it when you're done.</span>
+              <Button size="sm" variant="ghost" onClick={() => archive(true)}>
+                <Archive className="size-3.5" />
+                Archive
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -266,15 +297,26 @@ export function CaseDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Danger zone */}
-      <div className="border-t pt-4">
+      {/* Actions */}
+      <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+        {c.archived ? (
+          <Button variant="outline" onClick={() => archive(false)}>
+            <ArchiveRestore />
+            Restore to tracking
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => archive(true)}>
+            <Archive />
+            Archive
+          </Button>
+        )}
         <Button
           variant="ghost"
           onClick={() => setConfirmOpen(true)}
           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 />
-          Stop tracking this case
+          Stop tracking
         </Button>
       </div>
 
