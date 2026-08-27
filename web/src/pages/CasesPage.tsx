@@ -84,18 +84,16 @@ export function CasesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-heading text-xl font-semibold tracking-tight">Your cases</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+          <TabsList variant="line">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="finished">Finished</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <AddCaseDialog onAdded={onAdded} />
       </div>
-
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-        <TabsList variant="line">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="finished">Finished</TabsTrigger>
-        </TabsList>
-      </Tabs>
 
       {error && (
         <Alert variant="destructive">
