@@ -13,6 +13,7 @@ from app.models import Setting
 _DEFAULTS = {
     "apprise_urls": os.environ.get("APPRISE_URLS", ""),
     "poll_interval_hours": os.environ.get("POLL_INTERVAL_HOURS", "4"),
+    "poll_enabled": os.environ.get("POLL_ENABLED", "true"),
 }
 
 
@@ -50,3 +51,7 @@ def get_poll_interval_hours() -> float:
         return max(0.1, float(get_setting("poll_interval_hours")))
     except ValueError:
         return 4.0
+
+
+def get_poll_enabled() -> bool:
+    return get_setting("poll_enabled").strip().lower() not in ("false", "0", "no", "off")

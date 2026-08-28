@@ -15,12 +15,13 @@ logger = logging.getLogger(__name__)
 _ASSET = apprise.AppriseAsset(app_id="USCIS Case Tracker", app_desc="USCIS Case Tracker")
 
 
-def send_notification(title: str, body: str) -> bool:
-    """Send to every configured Apprise URL. Returns True if at least one succeeded.
+def send_notification(title: str, body: str, urls: list[str] | None = None) -> bool:
+    """Send to the given Apprise URLs (default: every configured channel).
+    Returns True if at least one succeeded.
 
     Synchronous (network I/O) — call via ``asyncio.to_thread`` from async code.
     """
-    urls = get_apprise_urls()
+    urls = urls if urls is not None else get_apprise_urls()
     if not urls:
         logger.info("Notification skipped — no channels configured (title: %s)", title)
         return False

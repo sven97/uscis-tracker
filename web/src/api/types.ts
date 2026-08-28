@@ -47,6 +47,7 @@ export interface CaseUpdate {
 export interface Settings {
   apprise_urls: string[];
   poll_interval_hours: number;
+  poll_enabled: boolean;
 }
 
 export class ApiError extends Error {
