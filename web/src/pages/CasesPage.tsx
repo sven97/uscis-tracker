@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Archive, ArchiveRestore, RefreshCw } from "lucide-react";
+import { Archive, ArchiveRestore, RefreshCw, TriangleAlert } from "lucide-react";
 import * as casesApi from "../api/cases";
 import { pollUntilChecked } from "../api/poll";
 import { ApiError, type Case } from "../api/types";
@@ -156,9 +156,17 @@ export function CasesPage() {
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-3 pt-0.5">
-                      <span className="font-mono text-[0.7rem] text-muted-foreground">
-                        {lastChecked(c.last_checked)}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-mono text-[0.7rem] text-muted-foreground">
+                          {lastChecked(c.last_checked)}
+                        </span>
+                        {c.last_fetch_ok === false && (
+                          <span className="inline-flex items-center gap-1 text-[0.7rem] font-medium text-amber-600 dark:text-amber-400">
+                            <TriangleAlert className="size-3" />
+                            last check failed
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5">
                         {!c.notify && (
                           <span className="mr-1 font-mono text-[0.65rem] uppercase text-muted-foreground">

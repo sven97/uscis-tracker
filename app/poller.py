@@ -43,7 +43,10 @@ async def refresh_case(case_id: int, source: str = "manual") -> None:
                     result["action_code_text"], case.action_code_desc,
                 )
         else:
-            # Still stamp last_checked so the UI's poll knows the attempt finished.
+            # Fetch failed (USCIS unreachable / redeploy / invalid receipt). Stamp
+            # last_checked so the UI's poll unblocks, and flag it so the UI can say
+            # the shown status is stale.
+            case.last_fetch_ok = False
             case.last_checked = datetime.utcnow()
             db.commit()
     except Exception as e:

@@ -33,6 +33,7 @@ from app.schemas import (
 )
 from app.settings_store import get_apprise_urls, get_poll_interval_hours, set_setting
 from app.uscis import (
+    ReceiptInvalid,
     fetch_case_status,
     is_terminal_status,
     validate_receipt_number,
@@ -99,11 +100,12 @@ async def preview_case(body: CaseCreate, db: Session = Depends(get_db)) -> CaseP
     if db.query(Case).filter(Case.receipt_number == receipt).first():
         raise HTTPException(409, f"Case {receipt} is already tracked")
 
-    result = await fetch_case_status(receipt)
+    try:
+        result = await fetch_case_status(receipt)
+    except ReceiptInvalid:
+        raise HTTPException(422, f"USCIS doesn't recognize {receipt} as a case number.")
     if not result:
-        raise HTTPException(
-            502, "Couldn't find a case for that receipt number (or USCIS is unreachable). Try again in a moment."
-        )
+        raise HTTPException(502, "Couldn't reach USCIS for that receipt number. Try again in a moment.")
     return CasePreview(
         receipt_number=receipt,
         status=result["action_code_text"],
