@@ -7,10 +7,15 @@ import time
 from typing import Optional
 
 import httpx
-from bs4 import BeautifulSoup
 from curl_cffi.requests import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+class ReceiptInvalid(Exception):
+    """USCIS returned a CaseStatusResponse with isValid=false — the receipt
+    number is well-formed but not a case USCIS recognizes."""
+
 
 RECEIPT_RE = re.compile(r"^[A-Z]{3}\d{10}$", re.IGNORECASE)
 USCIS_ROOT_URL = "https://egov.uscis.gov/"
@@ -46,13 +51,13 @@ class _CFSession:
 _cf_session: Optional[_CFSession] = None
 _cf_lock = asyncio.Lock()
 
-# Bundle that contains all Server Action registrations.
-# If USCIS redeploys and renames it, fetch /  and look for the bundle referenced
-# in the RSC module map with "default" export for module 7640.
-_ACTION_BUNDLE = "0fep78v8kvbf_.js"
+# USCIS ships a Turbopack build whose chunk filenames are randomized on every
+# deploy, so there's no stable bundle name to hardcode — we discover the chunks
+# from the landing page and scan them all for the action registration.
+_CHUNK_RE = re.compile(r"_next/static/chunks/[A-Za-z0-9._~-]+\.js")
 
-# Turbopack action IDs are 42-char hex strings (different from webpack's 40).
-# Pattern: createServerReference("<id>", ..., "<name>")
+# Turbopack action IDs are ~42-char hex strings (different from webpack's 40).
+# Pattern: (0,x.createServerReference)("<id>", x.callServer, void 0, …, "getCaseStatus")
 _ACTION_REF_RE = re.compile(
     r'createServerReference\)?\("([0-9a-f]{38,46})"[^"]*"getCaseStatus"',
     re.IGNORECASE,
@@ -95,36 +100,44 @@ def is_terminal_status(action_code_text: Optional[str]) -> bool:
     return any(marker in text for marker in _TERMINAL_STATUS_MARKERS)
 
 
-def _js_from_flaresolverr_response(html: str) -> str:
-    """Chrome wraps plain-text files in <html><body><pre>...</pre>. Unwrap."""
-    soup = BeautifulSoup(html, "lxml")
-    pre = soup.find("pre")
-    return pre.get_text() if pre else html
-
-
-async def _get_action_id(session_id: str, flare_client: httpx.AsyncClient) -> Optional[str]:
+async def _find_action_id(html: str, cookies: dict, user_agent: str) -> Optional[str]:
     """
-    Fetch the USCIS main JS bundle via FlareSolverr (already CF-solved session)
-    and extract the getCaseStatus Server Action ID.
+    Find the getCaseStatus Server Action ID by scanning the site's JS chunks.
+
+    Chunk filenames change every deploy, so pull every chunk URL out of the
+    landing page and scan them for the action registration. The static chunks
+    aren't Cloudflare-challenged, so we fetch them directly with curl_cffi
+    (concurrently) rather than paying a FlareSolverr round-trip each.
     """
-    r = await flare_client.post(FLARESOLVERR_URL, json={
-        "cmd": "request.get",
-        "url": f"{USCIS_ROOT_URL}_next/static/chunks/{_ACTION_BUNDLE}",
-        "session": session_id,
-        "maxTimeout": 30000,
-    })
-    d = r.json()
-    if d.get("status") != "ok":
-        logger.warning(f"Could not fetch action bundle: {d.get('message')}")
+    chunks = sorted(set(_CHUNK_RE.findall(html)))
+    if not chunks:
+        logger.warning("No JS chunks found in the USCIS landing page")
         return None
 
-    js = _js_from_flaresolverr_response(d["solution"]["response"])
-    m = _ACTION_REF_RE.search(js)
-    if m:
-        logger.debug(f"getCaseStatus action ID: {m.group(1)}")
-        return m.group(1)
+    async with AsyncSession(impersonate="chrome") as session:
+        async def scan(path: str) -> Optional[str]:
+            try:
+                resp = await session.get(
+                    f"{USCIS_ROOT_URL}{path}",
+                    headers={"User-Agent": user_agent, "Referer": USCIS_ROOT_URL},
+                    cookies=cookies,
+                    timeout=20,
+                )
+            except Exception as e:
+                logger.debug(f"chunk {path} fetch failed: {e}")
+                return None
+            if resp.status_code != 200:
+                return None
+            m = _ACTION_REF_RE.search(resp.text)
+            return m.group(1) if m else None
 
-    logger.warning("getCaseStatus action ID not found in bundle")
+        for coro in asyncio.as_completed([scan(c) for c in chunks]):
+            action_id = await coro
+            if action_id:
+                logger.debug(f"getCaseStatus action ID: {action_id} (scanned {len(chunks)} chunks)")
+                return action_id
+
+    logger.warning(f"getCaseStatus action ID not found in any of {len(chunks)} JS chunks")
     return None
 
 
@@ -146,7 +159,10 @@ def _parse_rsc_stream(text: str) -> Optional[dict]:
             or obj.get("CaseStatusResponse")
         )
         if csr:
-            return _extract_status(csr)
+            status = _extract_status(csr)
+            if status is None and csr.get("isValid") is False:
+                raise ReceiptInvalid
+            return status
     return None
 
 
@@ -218,8 +234,8 @@ async def _solve_cf_session() -> Optional[_CFSession]:
             # cf_clearance is bound to this exact UA — reuse it for the POST.
             user_agent = d1["solution"].get("userAgent") or _FALLBACK_UA
 
-            # Fetch action ID from bundle (CF already solved in this session)
-            action_id = await _get_action_id(session_id, flare_client)
+            # Scan the page's JS chunks for the getCaseStatus action ID.
+            action_id = await _find_action_id(d1["solution"]["response"], cookies, user_agent)
             if not action_id:
                 return None
 
