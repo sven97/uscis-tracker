@@ -30,6 +30,7 @@ from app.schemas import (
     CaseUpdate,
     SettingsRead,
     SettingsUpdate,
+    TestNotification,
 )
 from app.settings_store import get_apprise_urls, get_poll_interval_hours, set_setting
 from app.uscis import (
@@ -193,21 +194,34 @@ async def get_settings() -> SettingsRead:
 
 @app.put("/api/settings", response_model=SettingsRead)
 async def update_settings(body: SettingsUpdate) -> SettingsRead:
-    set_setting("apprise_urls", "\n".join(u.strip() for u in body.apprise_urls if u.strip()))
-    set_setting("poll_interval_hours", str(body.poll_interval_hours))
-    scheduler_mod.reschedule(body.poll_interval_hours)
+    """Partial update — only the fields present in the body are applied, so each
+    section of the Settings UI can save on its own."""
+    if body.apprise_urls is not None:
+        set_setting("apprise_urls", "\n".join(u.strip() for u in body.apprise_urls if u.strip()))
+    if body.poll_interval_hours is not None:
+        set_setting("poll_interval_hours", str(body.poll_interval_hours))
+        scheduler_mod.reschedule(body.poll_interval_hours)
     return SettingsRead(
         apprise_urls=get_apprise_urls(), poll_interval_hours=get_poll_interval_hours()
     )
 
 
 @app.post("/api/settings/test")
-async def test_notification() -> dict:
+async def test_notification(body: TestNotification | None = None) -> dict:
+    url = body.url.strip() if body and body.url and body.url.strip() else None
     ok = await asyncio.to_thread(
-        send_notification, "USCIS Tracker test", "If you can read this, notifications work. 🎉"
+        send_notification,
+        "USCIS Case Tracker test",
+        "If you can read this, notifications work. 🎉",
+        [url] if url else None,
     )
     if not ok:
-        raise HTTPException(400, "No channels configured, or all sends failed")
+        raise HTTPException(
+            400,
+            "That channel rejected the test."
+            if url
+            else "No channels configured, or all sends failed.",
+        )
     return {"status": "sent"}
 
 

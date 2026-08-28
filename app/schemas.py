@@ -99,5 +99,13 @@ class SettingsRead(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
-    apprise_urls: list[str] = Field(default_factory=list)
-    poll_interval_hours: float = Field(default=4.0, gt=0)
+    """Partial update — only the fields present are applied."""
+
+    apprise_urls: list[str] | None = None
+    poll_interval_hours: float | None = Field(default=None, gt=0)
+
+
+class TestNotification(BaseModel):
+    # If set, test just this one Apprise URL (even if not saved yet); otherwise
+    # test every configured channel.
+    url: str | None = None
