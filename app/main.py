@@ -32,7 +32,12 @@ from app.schemas import (
     SettingsUpdate,
     TestNotification,
 )
-from app.settings_store import get_apprise_urls, get_poll_interval_hours, set_setting
+from app.settings_store import (
+    get_apprise_urls,
+    get_poll_enabled,
+    get_poll_interval_hours,
+    set_setting,
+)
 from app.uscis import (
     ReceiptInvalid,
     fetch_case_status,
@@ -185,11 +190,17 @@ async def case_history(case_id: int, db: Session = Depends(get_db)) -> list[Stat
     )
 
 
+def _settings_read() -> SettingsRead:
+    return SettingsRead(
+        apprise_urls=get_apprise_urls(),
+        poll_interval_hours=get_poll_interval_hours(),
+        poll_enabled=get_poll_enabled(),
+    )
+
+
 @app.get("/api/settings", response_model=SettingsRead)
 async def get_settings() -> SettingsRead:
-    return SettingsRead(
-        apprise_urls=get_apprise_urls(), poll_interval_hours=get_poll_interval_hours()
-    )
+    return _settings_read()
 
 
 @app.put("/api/settings", response_model=SettingsRead)
@@ -200,10 +211,11 @@ async def update_settings(body: SettingsUpdate) -> SettingsRead:
         set_setting("apprise_urls", "\n".join(u.strip() for u in body.apprise_urls if u.strip()))
     if body.poll_interval_hours is not None:
         set_setting("poll_interval_hours", str(body.poll_interval_hours))
-        scheduler_mod.reschedule(body.poll_interval_hours)
-    return SettingsRead(
-        apprise_urls=get_apprise_urls(), poll_interval_hours=get_poll_interval_hours()
-    )
+    if body.poll_enabled is not None:
+        set_setting("poll_enabled", "true" if body.poll_enabled else "false")
+    if body.poll_interval_hours is not None or body.poll_enabled is not None:
+        scheduler_mod.apply_poll_config()
+    return _settings_read()
 
 
 @app.post("/api/settings/test")

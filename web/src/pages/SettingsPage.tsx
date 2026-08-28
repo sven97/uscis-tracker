@@ -7,10 +7,15 @@ import { Button, buttonVariants } from "@/components/animate-ui/components/butto
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { describeChannel, looksLikeAppriseUrl } from "@/lib/apprise";
+import { useTheme, type Theme } from "@/lib/use-theme";
 import { cn } from "@/lib/utils";
 
 const INTERVALS = [1, 2, 4, 8, 12, 24];
+
+const SELECT_CLS =
+  "h-8 w-full max-w-[220px] rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
 
 function intervalLabel(h: number): string {
   if (h < 1) return `Every ${Math.round(h * 60)} minutes`;
@@ -33,8 +38,10 @@ function SavedTag({ show }: { show: boolean }) {
 }
 
 export function SettingsPage() {
+  const { theme, setTheme } = useTheme();
   const [channels, setChannels] = useState<string[]>([]);
   const [interval, setInterval] = useState(4);
+  const [pollEnabled, setPollEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -51,6 +58,7 @@ export function SettingsPage() {
         const s = await settingsApi.getSettings();
         setChannels(s.apprise_urls);
         setInterval(s.poll_interval_hours);
+        setPollEnabled(s.poll_enabled);
       } catch (err) {
         setLoadError(err instanceof ApiError ? err.message : "Failed to load settings");
       } finally {
@@ -115,17 +123,20 @@ export function SettingsPage() {
     );
   };
 
-  const onIntervalChange = async (hours: number) => {
-    const prev = interval;
-    setInterval(hours);
+  const savePoll = async (patch: { poll_interval_hours?: number; poll_enabled?: boolean }) => {
+    const prev = { interval, pollEnabled };
+    if (patch.poll_interval_hours !== undefined) setInterval(patch.poll_interval_hours);
+    if (patch.poll_enabled !== undefined) setPollEnabled(patch.poll_enabled);
     setPollError(null);
     try {
-      const s = await settingsApi.updateSettings({ poll_interval_hours: hours });
+      const s = await settingsApi.updateSettings(patch);
       setInterval(s.poll_interval_hours);
+      setPollEnabled(s.poll_enabled);
       flashSaved("poll");
     } catch (err) {
-      setInterval(prev);
-      setPollError(err instanceof ApiError ? err.message : "Couldn't save the interval");
+      setInterval(prev.interval);
+      setPollEnabled(prev.pollEnabled);
+      setPollError(err instanceof ApiError ? err.message : "Couldn't save that");
     }
   };
 
@@ -156,6 +167,25 @@ export function SettingsPage() {
       </Link>
 
       <h1 className="font-heading text-2xl font-semibold tracking-tight">Settings</h1>
+
+      {/* Appearance */}
+      <Card>
+        <CardContent className="space-y-4">
+          <CardTitle>Appearance</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Theme for this browser. "System" follows your device setting.
+          </p>
+          <select
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as Theme)}
+            className={SELECT_CLS}
+          >
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </CardContent>
+      </Card>
 
       {/* Notifications */}
       <Card>
@@ -254,23 +284,40 @@ export function SettingsPage() {
       <Card>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <CardTitle>Polling</CardTitle>
+            <CardTitle>Background checks</CardTitle>
             <SavedTag show={saved === "poll"} />
           </div>
-          <p className="text-sm text-muted-foreground">
-            How often the tracker checks each case with USCIS in the background.
-          </p>
-          <select
-            value={interval}
-            onChange={(e) => onIntervalChange(Number(e.target.value))}
-            className="h-8 w-full max-w-[220px] rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-          >
-            {intervalOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium">Check cases automatically</div>
+              <div className="text-xs text-muted-foreground">
+                {pollEnabled
+                  ? "The tracker polls USCIS in the background."
+                  : "Off — cases are only checked when you hit Refresh."}
+              </div>
+            </div>
+            <Switch
+              checked={pollEnabled}
+              onCheckedChange={(v) => savePoll({ poll_enabled: v })}
+            />
+          </div>
+
+          <div className={cn("space-y-1.5", !pollEnabled && "opacity-50")}>
+            <label className="block text-xs text-muted-foreground">How often</label>
+            <select
+              value={interval}
+              disabled={!pollEnabled}
+              onChange={(e) => savePoll({ poll_interval_hours: Number(e.target.value) })}
+              className={SELECT_CLS}
+            >
+              {intervalOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
           {pollError && <p className="text-xs text-destructive">{pollError}</p>}
         </CardContent>
       </Card>

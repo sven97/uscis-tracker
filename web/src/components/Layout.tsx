@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/use-theme";
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { theme, toggle } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <div className="mx-auto max-w-3xl px-5 pb-24">
@@ -18,10 +18,10 @@ export function Layout({ children }: { children: ReactNode }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            onClick={toggle}
+            aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
-            {theme === "dark" ? <Sun /> : <Moon />}
+            {resolvedTheme === "dark" ? <Sun /> : <Moon />}
           </Button>
           <Link to="/settings" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
             <Settings />

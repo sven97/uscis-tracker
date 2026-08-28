@@ -10,7 +10,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.database import SessionLocal
 from app.models import Case
 from app.poller import refresh_case
-from app.settings_store import get_poll_interval_hours
+from app.settings_store import get_poll_enabled, get_poll_interval_hours
 from app.uscis import CF_SESSION_TTL, warm_session
 
 logger = logging.getLogger(__name__)
@@ -50,8 +50,25 @@ async def _keepalive() -> None:
 
 def start_scheduler() -> AsyncIOScheduler:
     global _scheduler
-    hours = get_poll_interval_hours()
     _scheduler = AsyncIOScheduler(timezone="UTC")
+    _scheduler.start()
+    apply_poll_config()
+    return _scheduler
+
+
+def apply_poll_config() -> None:
+    """Reconcile the poll (and CF-keepalive) jobs with the current settings —
+    called at startup and whenever the polling settings change."""
+    if _scheduler is None:
+        return
+    if not get_poll_enabled():
+        for jid in (_POLL_JOB_ID, _WARM_JOB_ID):
+            if _scheduler.get_job(jid):
+                _scheduler.remove_job(jid)
+        logger.info("Automatic checks OFF — cases are only checked on manual refresh")
+        return
+
+    hours = get_poll_interval_hours()
     _scheduler.add_job(
         _poll_all_cases, IntervalTrigger(hours=hours),
         id=_POLL_JOB_ID, replace_existing=True, misfire_grace_time=300,
@@ -62,16 +79,8 @@ def start_scheduler() -> AsyncIOScheduler:
             _keepalive, IntervalTrigger(seconds=warm_interval),
             id=_WARM_JOB_ID, replace_existing=True,
         )
-    _scheduler.start()
-    logger.info("Scheduler started — polling every %sh%s", hours,
+    logger.info("Automatic checks ON — every %sh%s", hours,
                 " (CF keepalive on)" if _KEEPALIVE else "")
-    return _scheduler
-
-
-def reschedule(hours: float) -> None:
-    if _scheduler is not None:
-        _scheduler.reschedule_job(_POLL_JOB_ID, trigger=IntervalTrigger(hours=hours))
-        logger.info("Scheduler rescheduled — polling every %sh", hours)
 
 
 def shutdown() -> None:

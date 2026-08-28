@@ -96,6 +96,7 @@ class CaseEventRead(BaseModel):
 class SettingsRead(BaseModel):
     apprise_urls: list[str]
     poll_interval_hours: float
+    poll_enabled: bool
 
 
 class SettingsUpdate(BaseModel):
@@ -103,6 +104,7 @@ class SettingsUpdate(BaseModel):
 
     apprise_urls: list[str] | None = None
     poll_interval_hours: float | None = Field(default=None, gt=0)
+    poll_enabled: bool | None = None
 
 
 class TestNotification(BaseModel):
