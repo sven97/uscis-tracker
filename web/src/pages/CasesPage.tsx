@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { caseTitle, titleIsReceipt } from "@/lib/case";
+import { usePullToRefresh } from "@/lib/use-pull-to-refresh";
 import { cn } from "@/lib/utils";
 
 type Filter = "tracking" | "archived";
@@ -86,10 +87,60 @@ export function CasesPage() {
     }
   };
 
+  // Pull-to-refresh: reload the list, then kick a USCIS check on every
+  // non-archived case (per-card "Checking…" spinners take it from there).
+  const refreshAll = async () => {
+    let list: Case[];
+    try {
+      list = await casesApi.listCases();
+      setCases(list);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to load cases");
+      return;
+    }
+    const targets = list.filter((c) => !c.archived);
+    targets.forEach((c) => setChecker(c.id, true));
+    targets.forEach((c) => {
+      casesApi
+        .refreshCase(c.id)
+        .then(() => pollUntilChecked(c.id, c.last_checked, replaceCase))
+        .catch(() => setError("Some cases couldn't be refreshed"))
+        .finally(() => setChecker(c.id, false));
+    });
+  };
+
+  const { pull, refreshing, threshold } = usePullToRefresh(refreshAll);
+
   const shown = cases.filter((c) => (filter === "archived" ? c.archived : !c.archived));
 
+  const settle = refreshing || pull === 0;
+
   return (
-    <div className="space-y-4">
+    <>
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 z-30 flex justify-center"
+        style={{
+          transform: `translateY(${Math.max(pull - 44, -44)}px)`,
+          opacity: pull > 6 || refreshing ? 1 : 0,
+          transition: settle ? "transform .2s ease, opacity .2s ease" : "none",
+        }}
+      >
+        <div className="mt-3 rounded-full border bg-card p-2 shadow-md">
+          <RefreshCw
+            className={cn("size-5 text-muted-foreground", refreshing && "animate-spin")}
+            style={refreshing ? undefined : { transform: `rotate(${(pull / threshold) * 300}deg)` }}
+          />
+        </div>
+      </div>
+
+      <div
+        className="space-y-4"
+        style={{
+          transform: `translateY(${pull}px)`,
+          transition: settle ? "transform .2s ease" : "none",
+        }}
+      >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
           <TabsList variant="line">
@@ -200,6 +251,7 @@ export function CasesPage() {
           </AnimatePresence>
         </ul>
       )}
-    </div>
+      </div>
+    </>
   );
 }

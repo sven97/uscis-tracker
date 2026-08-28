@@ -123,6 +123,8 @@
     }
   body {
     @apply bg-background text-foreground;
+    /* Custom pull-to-refresh owns the overscroll at the top of the page. */
+    overscroll-behavior-y: contain;
     }
   html {
     @apply font-sans;
