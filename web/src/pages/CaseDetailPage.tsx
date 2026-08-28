@@ -12,6 +12,7 @@ import {
   Pencil,
   RefreshCw,
   Trash2,
+  TriangleAlert,
   X,
 } from "lucide-react";
 import * as casesApi from "../api/cases";
@@ -213,6 +214,15 @@ export function CaseDetailPage() {
             <Clock className="size-3.5" />
             {c.last_checked ? `Checked ${fmt(c.last_checked)}` : "Not yet checked"}
           </div>
+          {c.last_fetch_ok === false && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+              <span>
+                The last check couldn't reach USCIS — the status above may be out of date. Try
+                Refresh again shortly.
+              </span>
+            </div>
+          )}
           {c.detail && (
             <div
               className="text-sm leading-relaxed text-muted-foreground [&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-2"

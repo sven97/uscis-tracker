@@ -9,6 +9,7 @@ export interface Case {
   is_valid: boolean | null;
   is_finished: boolean;
   archived: boolean;
+  last_fetch_ok: boolean;
   last_checked: string | null;
   notify: boolean;
   created_at: string;

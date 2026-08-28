@@ -36,6 +36,7 @@ class Case(Base):
     action_code_desc = Column(Text, nullable=True)
     is_finished      = Column(Boolean, default=False)  # derived: terminal status reached
     archived         = Column(Boolean, default=False)  # user-set: stop actively watching
+    last_fetch_ok    = Column(Boolean, default=True)   # did the last check reach USCIS?
     last_checked     = Column(DateTime, nullable=True)
     created_at       = Column(DateTime, default=datetime.utcnow)
     notify           = Column(Boolean, default=True)  # send notifications on change
@@ -72,6 +73,7 @@ def apply_result(case: Case, result: dict) -> None:
     case.is_valid = result.get("is_valid")
     case.is_finished = is_terminal_status(result["action_code_text"])
     case.last_checked = datetime.utcnow()
+    case.last_fetch_ok = True
 
 
 def history_entry(case: Case, result: dict, source: str) -> StatusHistory:

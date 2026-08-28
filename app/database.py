@@ -25,6 +25,7 @@ def init_db():
     _migrate_to_uscis_field_names()
     _migrate_notify_column()
     _migrate_archived_column()
+    _migrate_last_fetch_ok_column()
 
 
 def _migrate_notify_column():
@@ -49,6 +50,18 @@ def _migrate_archived_column():
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE cases ADD COLUMN archived BOOLEAN DEFAULT 0"))
             logger.info("Added column cases.archived")
+
+
+def _migrate_last_fetch_ok_column():
+    """Add cases.last_fetch_ok (did the last USCIS check succeed). Idempotent."""
+    insp = inspect(engine)
+    if "cases" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("cases")}
+    if "last_fetch_ok" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE cases ADD COLUMN last_fetch_ok BOOLEAN DEFAULT 1"))
+            logger.info("Added column cases.last_fetch_ok")
 
 
 def _migrate_to_uscis_field_names():

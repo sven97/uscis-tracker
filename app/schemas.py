@@ -51,6 +51,7 @@ class CaseRead(BaseModel):
     is_valid: bool | None
     is_finished: bool
     archived: bool
+    last_fetch_ok: bool
     last_checked: datetime | None
     notify: bool
     created_at: datetime
@@ -72,6 +73,7 @@ class CaseRead(BaseModel):
             is_valid=c.is_valid,
             is_finished=bool(c.is_finished),
             archived=bool(c.archived),
+            last_fetch_ok=bool(c.last_fetch_ok) if c.last_fetch_ok is not None else True,
             last_checked=c.last_checked,
             notify=bool(c.notify),
             created_at=c.created_at,
